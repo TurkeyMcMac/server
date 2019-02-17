@@ -9,6 +9,7 @@ int make_header(int status, char *buf, int buflen)
 	case 200: reason = "OK"; ok = 1; break;
 	case 400: reason = "Bad Request"; break;
 	case 404: reason = "Not Found"; break;
+	case 500: reason = "Internal Server Error"; break;
 	case 501: reason = "Not Implemented"; break;
 	default: reason = "???"; ok = 1; break;
 	}

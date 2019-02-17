@@ -1,6 +1,7 @@
 #include "handle-connection.h"
 #include "make-header.h"
 #include "escape-path.h"
+#include "open-file.h"
 #include <fcntl.h>
 #include <string.h>
 
@@ -15,6 +16,7 @@ void handle_connection(int connfd, int rootfd)
 	char *path;
 	int status;
 	int size;
+	struct stat st;
 	if ((size = read(connfd, buf, BUF_SIZE)) < 0) return;
 	buf[size] = '\0';
 	if (strncmp("GET ", buf, PRELUDE_SIZE)) {
@@ -41,14 +43,14 @@ void handle_connection(int connfd, int rootfd)
 	}
 	--path;
 	path[0] = '.';
-	if ((file = openat(rootfd, path, O_RDONLY)) < 0) {
-		status = 404;
+	if ((file = open_file(rootfd, path, &st)) < 0) {
+		status = -file;
 		goto send_just_header;
 	}
 	status = 200;
 	write(connfd, buf, make_header(status, buf, BUF_SIZE));
 	do {
-		size = read(file, buf, BUF_SIZE);
+		if ((size = read(file, buf, BUF_SIZE)) < 0) return;
 		write(connfd, buf, size);
 	} while (size == BUF_SIZE);
 	return;
