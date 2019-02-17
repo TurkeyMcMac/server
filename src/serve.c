@@ -15,29 +15,25 @@ union sockaddr_u {
 
 static int start_worker(int sockfd, int rootfd)
 {
-	sigset_t sigs;
-	sigemptyset(&sigs);
-	sigaddset(&sigs, SIG_END);
-	sigprocmask(SIG_BLOCK, &sigs, NULL);
 	while (1) {
+		sigset_t block, old;
 		int connfd;
 		if ((connfd = accept(sockfd, NULL, NULL)) < 0) {
-			int err = -errno;
-			close(sockfd);
-			return err;
+			return -errno;
 		}
+		sigfillset(&block);
+		sigprocmask(SIG_BLOCK, &block, &old);
 		handle_connection(connfd, rootfd);
+		sigprocmask(SIG_SETMASK, &old, NULL);
 		close(connfd);
-		sigpending(&sigs);
-		if (sigismember(&sigs, SIG_END)) return 0;
 	}
-	close(sockfd);
+	return 0;
 }
 
 static int start_serving(int sockfd, const struct serve_info *info)
 {
+	sigset_t oldset;
 	int i;
-	int caught;
 	int err;
 	void (*old_end_sig)(int);
 	pid_t pgroup = getpgrp();
@@ -54,7 +50,10 @@ static int start_serving(int sockfd, const struct serve_info *info)
 			_exit(start_worker(sockfd, info->rootfd));
 		}
 	}
-	sigwait(&info->catch, &caught);
+	sigprocmask(SIG_BLOCK, &info->catch, &oldset);
+	sigwaitinfo(&info->catch, NULL);
+	sigprocmask(SIG_SETMASK, &oldset, NULL);
+	err = 0;
 end_all:
 	old_end_sig = signal(SIG_END, SIG_IGN);
 	killpg(pgroup, SIG_END);
