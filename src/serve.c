@@ -15,13 +15,18 @@ union sockaddr_u {
 
 static int start_worker(int sockfd, int rootfd)
 {
+	sigset_t block;
+	sigfillset(&block);
+	sigdelset(&block, SIGSEGV);
+	sigdelset(&block, SIGBUS);
+	sigdelset(&block, SIGFPE);
+	sigdelset(&block, SIGILL);
 	while (1) {
-		sigset_t block, old;
+		sigset_t old;
 		int connfd;
 		if ((connfd = accept(sockfd, NULL, NULL)) < 0) {
 			return -errno;
 		}
-		sigfillset(&block);
 		sigprocmask(SIG_BLOCK, &block, &old);
 		handle_connection(connfd, rootfd);
 		sigprocmask(SIG_SETMASK, &old, NULL);
