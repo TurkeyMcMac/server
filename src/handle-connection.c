@@ -9,7 +9,7 @@
 #define PRELUDE_SIZE 4
 #define MAX_PATH_SIZE 1024
 
-void handle_connection(int connfd, int rootfd)
+void handle_connection(int connfd, const struct shared *share)
 {
 	int file;
 	char buf[BUF_SIZE];
@@ -43,7 +43,7 @@ void handle_connection(int connfd, int rootfd)
 	}
 	--path;
 	path[0] = '.';
-	if ((file = open_file(rootfd, path, &st)) < 0) {
+	if ((file = open_file(share->rootfd, path, &st)) < 0) {
 		status = -file;
 		goto send_just_header;
 	}

@@ -1,5 +1,6 @@
 #include "serve.h"
 #include "handle-connection.h"
+#include "shared.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/socket.h>
@@ -13,7 +14,7 @@ union sockaddr_u {
 	struct sockaddr gen;
 };
 
-static int start_worker(int sockfd, int rootfd)
+static int start_worker(const struct shared *share)
 {
 	sigset_t block;
 	sigfillset(&block);
@@ -24,11 +25,10 @@ static int start_worker(int sockfd, int rootfd)
 	while (1) {
 		sigset_t old;
 		int connfd;
-		if ((connfd = accept(sockfd, NULL, NULL)) < 0) {
+		if ((connfd = accept(share->sockfd, NULL, NULL)) < 0)
 			return -errno;
-		}
 		sigprocmask(SIG_BLOCK, &block, &old);
-		handle_connection(connfd, rootfd);
+		handle_connection(connfd, share);
 		sigprocmask(SIG_SETMASK, &old, NULL);
 		close(connfd);
 	}
@@ -42,6 +42,11 @@ static int start_serving(int sockfd, const struct serve_info *info)
 	int err;
 	void (*old_end_sig)(int);
 	pid_t pgroup = getpgrp();
+	struct shared share;
+	share.sockfd = sockfd;
+	share.logfd = STDERR_FILENO;
+	share.rootfd = info->rootfd;
+	if (mime_list_read(&share.mime, "/etc/mime.types")) return -errno;
 	for (i = 0; i < info->n_workers; ++i) {
 		pid_t worker = fork();
 		if (worker) {
@@ -52,7 +57,7 @@ static int start_serving(int sockfd, const struct serve_info *info)
 				goto end_all;
 			}
 		} else {
-			_exit(start_worker(sockfd, info->rootfd));
+			_exit(start_worker(&share));
 		}
 	}
 	sigprocmask(SIG_BLOCK, &info->catch, &oldset);
