@@ -15,7 +15,11 @@ static void key_from_str(KEY *key, const char *str)
 
 static int compare_keys(const void *e1, const void *e2)
 {
-	return ((const ENTRY *)e1)->key.bits - ((const ENTRY *)e2)->key.bits;
+	int64_t bits1 = ((const ENTRY *)e1)->key.bits,
+		bits2 = ((const ENTRY *)e2)->key.bits;
+	if (bits1 < bits2) return -1;
+	if (bits1 > bits2) return 1;
+	return 0;
 }
 
 int dict_init(struct dict *di, size_t cap)
