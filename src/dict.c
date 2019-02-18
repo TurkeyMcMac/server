@@ -24,6 +24,7 @@ int dict_init(struct dict *di, size_t cap)
 	if (!(di->entries = malloc(cap * sizeof(*di->entries)))) return -1;
 	di->cap = cap;
 	di->size = 0;
+	return 0;
 }
 
 int dict_add(struct dict *di, const char *key, void *val)
