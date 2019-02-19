@@ -11,6 +11,7 @@
 
 void handle_connection(int connfd, const struct shared *share)
 {
+	struct file_info finfo;
 	int file;
 	char buf[BUF_SIZE];
 	char *path;
@@ -43,12 +44,12 @@ void handle_connection(int connfd, const struct shared *share)
 	}
 	--path;
 	path[0] = '.';
-	if ((file = open_file(share->rootfd, path, &st)) < 0) {
+	if ((file = open_file(share->rootfd, path, &finfo, &share->mime)) < 0) {
 		status = -file;
 		goto send_just_header;
 	}
 	status = 200;
-	write(connfd, buf, make_header(status, buf, BUF_SIZE));
+	write(connfd, buf, make_header(status, buf, BUF_SIZE, &finfo));
 	do {
 		if ((size = read(file, buf, BUF_SIZE)) < 0) return;
 		write(connfd, buf, size);
@@ -56,5 +57,5 @@ void handle_connection(int connfd, const struct shared *share)
 	return;
 
 send_just_header:
-	write(connfd, buf, make_header(status, buf, BUF_SIZE));
+	write(connfd, buf, make_header(status, buf, BUF_SIZE, NULL));
 }
